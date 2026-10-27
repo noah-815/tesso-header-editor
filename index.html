@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Header Color Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  /* ── Editor chrome ─────────────────────────────── */
+  :root {
+    --ui-bg: #f3f3f4;
+    --ui-panel: #ffffff;
+    --ui-line: #e4e4e7;
+    --ui-text: #18181b;
+    --ui-sub: #71717a;
+    --ui-accent: #2563eb;
+    --ui-accent-soft: #eff4ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: Pretendard, -apple-system, sans-serif;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    overflow: hidden;
+  }
+
+  .editor {
+    background: var(--ui-panel);
+    border-right: 1px solid var(--ui-line);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .editor-head {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--ui-line);
+  }
+  .editor-head h1 { font-size: 15px; font-weight: 600; margin: 0; }
+  .editor-head p { font-size: 12px; color: var(--ui-sub); margin: 4px 0 0; }
+
+  .group { padding: 18px 20px; border-bottom: 1px solid var(--ui-line); }
+  .group-title {
+    font-size: 12px; font-weight: 600; margin: 0 0 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .hint { font-size: 11.5px; color: var(--ui-sub); line-height: 1.5; margin: 8px 0 0; }
+  .hint.warn { color: #b45309; }
+  .hint code { font-family: Inter, sans-serif; font-size: 10.5px; background: #f4f4f5; padding: 0 4px; border-radius: 3px; }
+  .sub { margin-top: 14px; }
+  .sub-label { font-size: 11.5px; color: var(--ui-sub); margin: 0 0 6px; }
+  .is-hidden { display: none !important; }
+
+  /* header set thumbnails */
+  .sets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .set {
+    border: 1px solid var(--ui-line); border-radius: 8px; background: #fff;
+    padding: 6px; cursor: pointer; text-align: left; font: inherit;
+  }
+  .set:disabled { cursor: not-allowed; opacity: .45; }
+  .set[aria-pressed="true"] { border-color: var(--ui-accent); box-shadow: 0 0 0 1px var(--ui-accent); }
+  .set-thumb {
+    height: 26px; border-radius: 4px; background: #f4f4f5;
+    display: flex; align-items: center; padding: 0 5px; gap: 3px; position: relative;
+  }
+  .set-thumb i { display: block; height: 3px; width: 8px; background: #a1a1aa; border-radius: 1px; }
+  .set-thumb b { position: absolute; left: 50%; transform: translateX(-50%); width: 14px; height: 4px; background: #3f3f46; border-radius: 1px; }
+  .set-thumb .r { margin-left: auto; }
+  .set-thumb.center { justify-content: center; }
+  .set-thumb.center b { position: static; transform: none; }
+  .set-thumb.inset { background: #d4d4d8; padding: 4px; }
+  .set-thumb.inset > div { flex: 1; height: 100%; background: #fff; border-radius: 2px; display: flex; align-items: center; padding: 0 4px; gap: 3px; position: relative; }
+  .set span { display: block; font-size: 11px; margin-top: 5px; color: var(--ui-sub); white-space: nowrap; }
+  .set[aria-pressed="true"] span { color: var(--ui-accent); font-weight: 600; }
+
+  /* switch */
+  .switch { position: relative; width: 34px; height: 20px; flex: none; }
+  .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+  .switch span {
+    position: absolute; inset: 0; border-radius: 999px; background: #d4d4d8; transition: background .15s;
+    pointer-events: none;
+  }
+  .switch span::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .15s;
+  }
+  .switch input:checked + span { background: var(--ui-accent); }
+  .switch input:checked + span::after { transform: translateX(14px); }
+  .switch input:focus-visible + span { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+
+  /* segmented */
+  .seg { display: flex; background: #f4f4f5; border-radius: 8px; padding: 3px; gap: 2px; }
+  .seg button {
+    flex: 1; border: 0; background: transparent; border-radius: 6px; padding: 7px 4px;
+    font: inherit; font-size: 12px; color: var(--ui-sub); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .seg button[aria-pressed="true"] { background: #fff; color: var(--ui-text); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .seg button:disabled { cursor: not-allowed; opacity: .5; }
+  .chip { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(0,0,0,.12); flex: none; position: relative; overflow: hidden; }
+  .chip::after { content: "A"; position: absolute; inset: 0; font: 600 9px/14px Inter, sans-serif; text-align: center; color: var(--c); }
+
+  /* radio cards (hover behaviour) */
+  .opt {
+    display: block; border: 1px solid var(--ui-line); border-radius: 8px; padding: 10px 12px;
+    cursor: pointer; margin-bottom: 8px; position: relative;
+  }
+  .opt input { position: absolute; opacity: 0; }
+  .opt strong { font-size: 12.5px; display: block; }
+  .opt small { font-size: 11.5px; color: var(--ui-sub); display: block; margin-top: 3px; line-height: 1.45; }
+  .opt:has(input:checked) { border-color: var(--ui-accent); background: var(--ui-accent-soft); }
+  .opt:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+  .opt:has(input:focus-visible) { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+
+  select.ui {
+    width: 100%; font: inherit; font-size: 12.5px; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid var(--ui-line); background: #fff; color: var(--ui-text);
+  }
+
+  .state-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  .state-table td { padding: 6px 0; border-top: 1px solid var(--ui-line); vertical-align: top; }
+  .state-table td:first-child { color: var(--ui-sub); width: 70px; }
+  .state-table code { font-family: Inter, sans-serif; font-size: 11px; background: #f4f4f5; padding: 1px 5px; border-radius: 4px; }
+
+  /* ── Stage ─────────────────────────────────────── */
+  .stage { display: flex; gap: 16px; padding: 16px; min-width: 0; min-height: 0; }
+  .stage.compare { flex-direction: column; } /* stacked keeps each preview at desktop proportions */
+  .pane { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .pane-label {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: 12px; margin-bottom: 8px; min-height: 22px;
+  }
+  .pane-label strong { font-weight: 600; }
+  .status {
+    font-family: Inter, sans-serif; font-size: 11px; padding: 3px 8px; border-radius: 999px;
+    background: #fff; border: 1px solid var(--ui-line); color: var(--ui-sub); white-space: nowrap;
+  }
+  .status b { color: var(--ui-text); font-weight: 600; }
+  .frame {
+    position: relative; flex: 1; min-height: 0; border-radius: 10px; overflow: hidden;
+    background: #fff; box-shadow: 0 0 0 1px var(--ui-line), 0 8px 24px rgba(0,0,0,.06);
+  }
+  .viewport { position: absolute; left: 0; top: 0; width: var(--vw); transform-origin: 0 0; }
+  .scroller { position: absolute; inset: 0; overflow-y: auto; container-type: size; }
+
+  /* ── Storefront tokens (set05) ─────────────────── */
+  .frame {
+    --header-height: 64px;   /* bar */
+    --header-area: 64px;     /* space the header occupies in the page */
+    --header-inset: 0px;
+    --header-pad-x: 19px;
+    --header-gap: 12px;
+    --logo: url(data:image/png;base64,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);
+  }
+  /* set08: inset header — floating container, always header-solid */
+  .frame[data-set="08"] {
+    --header-area: 102px;
+    --header-inset: 19px;
+    --header-pad-x: 32px;
+    --header-gap: 16px;
+  }
+  /* solid schemes */
+  /* solid schemes — Figma "Color (테스트용)" collection, modes base / muted / inverted */
+  .frame[data-scheme="base"] {
+    --solid-bg: #ffffff; --solid-nav: #1a1a1a; --solid-utility: #1a1a1a; --solid-nav-hover: #c4451c;
+    --menu-bg: #ffffff; --menu-nav: #1a1a1a; --menu-nav-hover: #c4451c;
+    --search-line: #e4e1dc; --search-line-active: #97938d; --search-placeholder: #97938d;
+    --search-input: #1a1a1a; --search-icon: #1a1a1a; --search-label: #5e5b57;
+    --search-result: #1a1a1a; --search-result-hover: #c4451c;
+    --header-backdrop: #0f0e0d59;
+  }
+  .frame[data-scheme="muted"] {
+    --solid-bg: #f7f5f2; --solid-nav: #1a1a1a; --solid-utility: #1a1a1a; --solid-nav-hover: #c4451c;
+    --menu-bg: #f7f5f2; --menu-nav: #1a1a1a; --menu-nav-hover: #c4451c;
+    --search-line: #e4e1dc; --search-line-active: #97938d; --search-placeholder: #97938d;
+    --search-input: #1a1a1a; --search-icon: #1a1a1a; --search-label: #5e5b57;
+    --search-result: #1a1a1a; --search-result-hover: #c4451c;
+    --header-backdrop: #0f0e0d59;
+  }
+  .frame[data-scheme="inverted"] {
+    --solid-bg: #1f1e1d; --solid-nav: #ffffff; --solid-utility: #ffffff; --solid-nav-hover: #ffffffb8;
+    --menu-bg: #1f1e1d; --menu-nav: #ffffff; --menu-nav-hover: #ffffffb8;
+    --search-line: #ffffff29; --search-line-active: #ffffff80; --search-placeholder: #ffffff80;
+    --search-input: #ffffff; --search-icon: #ffffff; --search-label: #ffffffd9;
+    --search-result: #ffffff; --search-result-hover: #ffffffb8;
+    --header-backdrop: #0f0e0d59;
+  }
+  /* overlap foregrounds — Figma "Header On Media (테스트용)", on-dark / on-light only (independent of scheme) */
+  .frame[data-on="dark"]  { --overlap-nav: #ffffff; --overlap-utility: #ffffff; }
+  .frame[data-on="light"] { --overlap-nav: #1a1a1a; --overlap-utility: #1a1a1a; }
+
+  /* set05_header */
+  .hdr {
+    position: sticky; top: 0; z-index: 3;
+    padding: var(--header-inset);
+    --header-bg: var(--solid-bg);
+    --header-nav: var(--solid-nav);
+    --header-utility: var(--solid-utility);
+    --header-nav-hover: var(--solid-nav-hover);
+  }
+  .hdr.is-transparent {
+    --header-bg: rgba(255,255,255,0);
+    --header-nav: var(--overlap-nav);
+    --header-utility: var(--overlap-utility);
+    --header-nav-hover: var(--overlap-nav); /* no on-media hover token: underline only */
+  }
+  .hdr-inner { position: relative; }
+  .hdr-bar {
+    position: relative;
+    display: flex; align-items: center; justify-content: space-between;
+    height: var(--header-height);
+    padding: 16px var(--header-pad-x);
+    background: var(--header-bg);
+    color: var(--header-nav);
+    font-family: Inter, sans-serif; font-size: 13px; line-height: 1.2;
+    transition: background-color .25s ease, color .25s ease;
+  }
+  .hdr-nav, .hdr-util { display: flex; align-items: center; gap: var(--header-gap); height: 100%; }
+  .hdr-item {
+    display: flex; align-items: center; height: 100%; padding: 8px;
+    color: inherit; text-decoration: none; white-space: nowrap; cursor: pointer;
+  }
+  .hdr-nav .hdr-item:first-child { padding-left: 0; }
+  .hdr-util .hdr-item:last-child { padding-right: 0; }
+  .hdr-util { color: var(--header-utility); transition: color .25s ease; }
+  .hdr-item:hover, .hdr-item.is-open { color: var(--header-nav-hover); }
+  .hdr-item:hover span, .hdr-item.is-open span { text-decoration: underline; text-underline-offset: 2px; }
+  /* logo inlined as data URI: file:// pages block CSS masks loaded from disk */
+  .hdr-logo {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 67.5px; height: 15px;
+    background: currentColor;
+    -webkit-mask: var(--logo) center / contain no-repeat;
+            mask: var(--logo) center / contain no-repeat;
+  }
+
+  /* set05_expanded (2depth) */
+  .hdr-menu {
+    position: absolute; left: 0; right: 0; top: 100%;
+    background: var(--menu-bg); color: var(--menu-nav);
+    padding: 12px var(--header-pad-x) 32px;
+    font-family: Inter, sans-serif; font-size: 13px; line-height: 1.2;
+    display: flex; flex-direction: column; align-items: flex-start;
+    clip-path: inset(0 0 100% 0);
+    visibility: hidden;
+    transition: clip-path .28s cubic-bezier(.2,.7,.2,1), visibility 0s linear .28s, background-color .25s ease, color .25s ease;
+  }
+  .frame[data-set="08"] .hdr-menu { padding-top: 4px; padding-bottom: 28px; min-height: 120px; }
+  .hdr-menu a { padding: 8px 0; color: inherit; text-decoration: none; text-transform: capitalize; }
+  .hdr-menu a:hover { color: var(--menu-nav-hover); text-decoration: underline; text-underline-offset: 2px; }
+  .hdr.is-open .hdr-menu {
+    clip-path: inset(0 0 0 0); visibility: visible;
+    transition: clip-path .28s cubic-bezier(.2,.7,.2,1), visibility 0s, background-color .25s ease, color .25s ease;
+  }
+
+  /* set05_searchBar + set05_searchResult (opens on Search click) */
+  .hdr-search {
+    position: absolute; left: 0; right: 0; top: 100%;
+    background: var(--menu-bg); color: var(--search-result);
+    clip-path: inset(0 0 100% 0);
+    visibility: hidden;
+    transition: clip-path .28s cubic-bezier(.2,.7,.2,1), visibility 0s linear .28s, background-color .25s ease, color .25s ease;
+  }
+  .hdr.is-search .hdr-search {
+    clip-path: inset(0 0 0 0); visibility: visible;
+    transition: clip-path .28s cubic-bezier(.2,.7,.2,1), visibility 0s, background-color .25s ease, color .25s ease;
+  }
+  .search-bar { padding: 36px var(--header-pad-x); }
+  .search-field {
+    display: flex; align-items: center; gap: 8px;
+    padding: 13px 0 14px; border-bottom: 1px solid var(--search-line);
+    transition: border-color .2s ease;
+  }
+  /* border-inactive when empty, border-active while typing */
+  .search-field:has(input:not(:placeholder-shown)) { border-bottom-color: var(--search-line-active); }
+  .search-icon { color: var(--search-icon); flex: none; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; }
+  .search-icon svg { width: 20px; height: 20px; flex: none; }
+  .search-field input {
+    flex: 1; min-width: 0; border: 0; outline: 0; padding: 0; background: transparent;
+    font: 400 13px/1.2 Pretendard, sans-serif; color: var(--search-input); caret-color: var(--search-input);
+  }
+  .search-field input::placeholder { color: var(--search-placeholder); }
+  .search-result {
+    padding: 6px var(--header-pad-x) 40px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .search-label { margin: 0; font: 500 13px/1.2 Pretendard, sans-serif; color: var(--search-label); }
+  .search-list { display: flex; flex-direction: column; align-items: flex-start; }
+  .search-list a {
+    padding: 8px 0; font: 400 13px/1.2 Inter, sans-serif; color: inherit;
+    text-decoration: none; text-transform: capitalize; cursor: pointer;
+  }
+  .search-list a:hover { color: var(--search-result-hover); text-decoration: underline; text-underline-offset: 2px; }
+  .hdr-search.is-empty .search-result { display: none; }
+  /* set08_searchBar: no icon, 16px input, 32px side padding */
+  .frame[data-set="08"] .search-bar { height: 124px; padding: 40px var(--header-pad-x) 32px; }
+  .frame[data-set="08"] .search-field { padding: 16px 0 17px; }
+  .frame[data-set="08"] .search-icon { display: none; }
+  .frame[data-set="08"] .search-field input { font-size: 16px; }
+  .frame[data-set="08"] .search-result { padding-top: 8px; }
+
+  /* set05_dim */
+  .dim {
+    position: absolute; inset: 0; z-index: 2; background: var(--header-backdrop);
+    opacity: 0; pointer-events: none; transition: opacity .25s ease;
+  }
+  .frame.is-dimmed .dim { opacity: 1; }
+  .frame.is-searching .dim { pointer-events: auto; cursor: pointer; } /* click outside closes search */
+
+  /* overlap: page slides under the sticky header */
+  .page.is-under { margin-top: calc(var(--header-area) * -1); }
+
+  /* heroSection/fullBleed_center */
+  .hero {
+    position: relative; height: 100cqh; min-height: 560px;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+    padding: 96px 0;
+  }
+  .hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .hero-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.2); }
+  .hero[data-tone="light"] .hero-overlay { background: transparent; }
+  .hero-content { position: relative; width: min(1200px, 90%); text-align: center; color: #fff; display: flex; flex-direction: column; gap: 12px; }
+  .hero-content p { margin: 0; font-family: Pretendard, sans-serif; font-size: 14px; line-height: 20px; text-transform: capitalize; }
+  .hero-content h2 { margin: 0; font-family: Inter, sans-serif; font-weight: 600; font-size: clamp(28px, 3.2vw, 48px); line-height: 1.2; letter-spacing: -0.2px; text-transform: capitalize; }
+
+  /* filler sections */
+  .section { padding: 64px 19px; font-family: Inter, sans-serif; color: #111; }
+  .section h3 { font-size: 13px; font-weight: 500; margin: 0 0 20px; }
+  .crumb { font-size: 12px; color: #6b6b6b; margin-bottom: 8px; }
+  .title { font-size: 28px; font-weight: 500; margin: 0 0 32px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .card .ph { aspect-ratio: 3 / 4; background: #ddd; }
+  .card .t { font-size: 13px; margin-top: 10px; }
+  .card .p { font-size: 13px; color: #6b6b6b; margin-top: 4px; }
+  .band { background: #f2f1ee; padding: 96px 19px; text-align: center; font-family: Inter, sans-serif; font-size: 22px; color: #111; }
+</style>
+</head>
+<body>
+
+<aside class="editor" aria-label="헤더 편집기">
+  <div class="editor-head">
+    <h1>헤더 편집 · 컬러</h1>
+    <p>헤더 디자인과 상태별 컬러를 설정합니다.</p>
+  </div>
+
+  <section class="group">
+    <h2 class="group-title">헤더 디자인</h2>
+    <div class="sets" id="sets"></div>
+    <p class="hint" id="setHint"></p>
+  </section>
+
+  <section class="group">
+    <div class="group-title">
+      <label for="overlap">헤더 겹치기</label>
+      <span class="switch"><input type="checkbox" id="overlap" role="switch" checked><span></span></span>
+    </div>
+    <p class="hint">페이지 최상단이 풀블리드 섹션(히어로 등)이면 헤더를 자동으로 겹쳐 보여줍니다.</p>
+
+    <p class="hint is-hidden" id="insetHint">Inset형 헤더는 불투명한 컨테이너 위에 전경이 놓이므로, 겹쳐도 header-solid 컬러를 그대로 씁니다. (On dark / On light 미제공)</p>
+    <div class="sub" id="onGroup">
+      <p class="sub-label">겹쳤을 때 컬러</p>
+      <div class="seg" id="onSeg">
+        <button type="button" data-v="dark"><i class="chip" style="background:#3f3f46;--c:#ffffff"></i>On dark</button>
+        <button type="button" data-v="light"><i class="chip" style="background:#e4e4e7;--c:#1a1a1a"></i>On light</button>
+      </div>
+      <p class="hint">On dark: 밝은 전경 #ffffff · On light: 어두운 전경 #1a1a1a · 배경은 투명. header-solid scheme과 무관합니다.</p>
+    </div>
+    <p class="hint warn is-hidden" id="noBleedHint">현재 페이지는 최상단에 풀블리드 섹션이 없어 겹치지 않고 header-solid로 표시됩니다.</p>
+  </section>
+
+  <section class="group">
+    <h2 class="group-title">header-solid 컬러</h2>
+    <div class="seg" id="schemeSeg">
+      <button type="button" data-v="base"><i class="chip" style="background:#fff;--c:#1a1a1a"></i>Base</button>
+      <button type="button" data-v="muted"><i class="chip" style="background:#f7f5f2;--c:#1a1a1a"></i>Muted</button>
+      <button type="button" data-v="inverted"><i class="chip" style="background:#1f1e1d;--c:#fff"></i>Inverted</button>
+    </div>
+    <p class="hint" id="solidHint"></p>
+  </section>
+
+  <section class="group" id="hoverGroup">
+    <div class="group-title">
+      <span>호버 시 solid 전환 <span style="color:var(--ui-sub);font-weight:400">· 의사결정용</span></span>
+    </div>
+    <label class="opt"><input type="radio" name="hover" value="always">
+      <strong>A · 항상 solid</strong>
+      <small>1·2depth 유무와 관계없이 헤더에 호버하면 solid로 전환</small>
+    </label>
+    <label class="opt"><input type="radio" name="hover" value="depth2">
+      <strong>B · 2depth가 있을 때만 solid</strong>
+      <small>1depth만 있는 메뉴는 호버해도 투명 유지, 2depth가 열릴 때만 solid</small>
+    </label>
+    <div class="row" style="margin-top:6px">
+      <label for="compare">A / B 나란히 비교</label>
+      <span class="switch"><input type="checkbox" id="compare" role="switch"><span></span></span>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2 class="group-title">미리보기 페이지</h2>
+    <select class="ui" id="page">
+      <option value="home-dark">홈 · 어두운 풀블리드 히어로</option>
+      <option value="home-light">홈 · 밝은 풀블리드 히어로</option>
+      <option value="sub">서브 페이지 · 히어로 없음</option>
+    </select>
+    <p class="hint">Shop 메뉴에만 2depth가 있습니다. 스크롤하면 header-solid로 전환됩니다. Search를 클릭하면 검색 화면이 열립니다(바깥 클릭·Esc로 닫기).</p>
+  </section>
+
+  <section class="group">
+    <h2 class="group-title">상태별 컬러</h2>
+    <table class="state-table">
+      <tr><td>default</td><td id="defaultRow"></td></tr>
+      <tr><td>hover</td><td><code>header-solid</code> 고정</td></tr>
+      <tr><td>scrolled</td><td><code>header-solid</code> 고정</td></tr>
+      <tr><td>search</td><td><code>header-solid</code> 고정 + dim</td></tr>
+    </table>
+  </section>
+</aside>
+
+<main class="stage" id="stage"></main>
+
+<template id="paneTpl">
+  <div class="pane">
+    <div class="pane-label"><strong></strong><span class="status"></span></div>
+    <div class="frame">
+      <div class="viewport">
+      <div class="dim"></div>
+      <div class="scroller">
+        <header class="hdr">
+          <div class="hdr-inner">
+          <div class="hdr-bar">
+            <nav class="hdr-nav">
+              <a class="hdr-item" data-depth2><span>Shop</span></a>
+              <a class="hdr-item"><span>About</span></a>
+              <a class="hdr-item"><span>Journal</span></a>
+              <a class="hdr-item"><span>Info</span></a>
+              <a class="hdr-item"><span>The Story</span></a>
+            </nav>
+            <div class="hdr-logo" role="img" aria-label="BRAND"></div>
+            <div class="hdr-util">
+              <a class="hdr-item" data-search><span>Search</span></a>
+              <a class="hdr-item"><span>Sign in</span></a>
+              <a class="hdr-item"><span>Bag (0)</span></a>
+            </div>
+          </div>
+          <div class="hdr-menu">
+            <a>new arrivals</a><a>Essentials</a><a>Classics</a><a>Jackets</a>
+            <a>tops</a><a>skirts</a><a>dresses</a><a>accessories</a>
+          </div>
+          <div class="hdr-search">
+            <div class="search-bar">
+              <label class="search-field">
+                <span class="search-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M9.15853 3.87695C11.9307 3.87717 14.1787 6.12432 14.1789 8.89648C14.1789 10.236 13.6521 11.4516 12.797 12.3519L15.7438 15.2979C15.8087 15.3629 15.8086 15.468 15.7438 15.533L15.5086 15.7699L15.2718 16.005C15.2067 16.0698 15.1016 16.0699 15.0366 16.005L12.0386 13.007C11.2231 13.5796 10.2305 13.9167 9.15853 13.9168C6.38612 13.9168 4.13818 11.6689 4.13818 8.89648C4.13836 6.12422 6.38623 3.87702 9.15853 3.87695ZM9.15853 4.8763C6.93851 4.87636 5.13852 6.6765 5.13835 8.89648C5.13835 11.1166 6.93841 12.9166 9.15853 12.9167C11.3785 12.9164 13.1787 11.1165 13.1787 8.89648C13.1785 6.6766 11.3784 4.87652 9.15853 4.8763Z"/></svg></span>
+                <input type="text" aria-label="검색" placeholder="Search" autocomplete="off">
+              </label>
+            </div>
+            <div class="search-result">
+              <p class="search-label">검색 결과</p>
+              <div class="search-list">
+                <a>Product Name</a><a>CH 03 Essence Lounge Desert Taupe</a>
+                <a>Square Moduler Coffee Table</a><a>Handcrafted Solid Oak Object Natural Finish</a>
+              </div>
+            </div>
+          </div>
+          </div>
+        </header>
+        <div class="page"></div>
+      </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+// preview renders at a fixed desktop width, then scales to fit the pane
+const VIEWPORT_W = 1440;
+// 05 and 06 share one option (shown as "05 / 06")
+const SETS = ['04', '05', '08', '09'];
+const SET_LABEL = { '05': '05/06' };
+const setLabel = n => SET_LABEL[n] || n;
+const ENABLED_SETS = ['05', '08'];
+const SET_INFO = {
+  '05': { hint: 'set 05 / 06 · 풀폭 헤더. 겹치면 투명 배경 + on dark / on light, 호버·스크롤 시 solid.', inset: false },
+  '08': { hint: 'set 08 · Inset형 헤더. 겹치기와 관계없이 항상 header-solid.', inset: true },
+};
+const HOVER_LABEL = { always: 'A · 항상 solid', depth2: 'B · 2depth가 있을 때만 solid' };
+
+const state = {
+  set: '05',
+  overlap: true,
+  on: 'dark',
+  scheme: 'base',
+  hover: 'always',
+  compare: false,
+  page: 'home-dark',
+};
+
+const PAGES = {
+  'home-dark':  { fullBleed: true,  hero: { src: 'assets/hero-dark.jpg',  tone: 'dark',  sub: 'Less, but better', title: 'Crafted for Better Experience' } },
+  'home-light': { fullBleed: true,  hero: { src: 'assets/hero-light.jpg', tone: 'light', sub: '', title: '' } },
+  'sub':        { fullBleed: false },
+};
+
+function cards(n) {
+  return Array.from({ length: n }, (_, i) =>
+    `<div class="card"><div class="ph"></div><div class="t">Product name ${i + 1}</div><div class="p">₩ 128,000</div></div>`).join('');
+}
+
+function pageHTML(key) {
+  const p = PAGES[key];
+  const hero = p.hero ? `
+    <section class="hero" data-tone="${p.hero.tone}">
+      <img src="${p.hero.src}" alt="">
+      <div class="hero-overlay"></div>
+      ${p.hero.title ? `<div class="hero-content"><p>${p.hero.sub}</p><h2>${p.hero.title}</h2></div>` : ''}
+    </section>` : `
+    <section class="section">
+      <div class="crumb">Home / Shop</div>
+      <h1 class="title">New Arrivals</h1>
+      <div class="grid">${cards(8)}</div>
+    </section>`;
+  return `${hero}
+    <section class="section"><h3>New Arrivals</h3><div class="grid">${cards(4)}</div></section>
+    <div class="band">Less, but better.</div>
+    <section class="section"><h3>Best Sellers</h3><div class="grid">${cards(8)}</div></section>`;
+}
+
+/* ── Preview pane: owns its own scroll / hover state ── */
+function createPane(hoverMode) {
+  const node = document.getElementById('paneTpl').content.firstElementChild.cloneNode(true);
+  const frame = node.querySelector('.frame');
+  const scroller = node.querySelector('.scroller');
+  const hdr = node.querySelector('.hdr');
+  const page = node.querySelector('.page');
+  const label = node.querySelector('.pane-label strong');
+  const status = node.querySelector('.status');
+  const viewport = node.querySelector('.viewport');
+  const local = { hovered: false, open: false, scrolled: false, search: false };
+  const search = node.querySelector('.hdr-search');
+  const searchInput = search.querySelector('input');
+
+  new ResizeObserver(() => {
+    const scale = frame.clientWidth / VIEWPORT_W;
+    viewport.style.setProperty('--vw', VIEWPORT_W + 'px');
+    viewport.style.height = (frame.clientHeight / scale) + 'px';
+    viewport.style.transform = `scale(${scale})`;
+  }).observe(frame);
+
+  function render() {
+    const overlapActive = state.overlap && PAGES[state.page].fullBleed;
+    const inset = SET_INFO[state.set].inset;
+    const hoverSolid = hoverMode === 'always' ? (local.hovered || local.open) : local.open;
+    const solid = inset || !overlapActive || local.scrolled || hoverSolid || local.search;
+
+    frame.dataset.set = state.set;
+    frame.dataset.scheme = state.scheme;
+    frame.dataset.on = state.on;
+    frame.classList.toggle('is-dimmed', local.open || local.search);
+    frame.classList.toggle('is-searching', local.search);
+    page.classList.toggle('is-under', overlapActive);
+    hdr.classList.toggle('is-transparent', !solid);
+    hdr.classList.toggle('is-open', local.open);
+    hdr.classList.toggle('is-search', local.search);
+    hdr.querySelector('[data-depth2]').classList.toggle('is-open', local.open);
+    hdr.querySelector('[data-search]').classList.toggle('is-open', local.search);
+    search.classList.toggle('is-empty', !searchInput.value.trim());
+
+    label.textContent = HOVER_LABEL[hoverMode] && state.compare ? HOVER_LABEL[hoverMode] : `미리보기 · set ${setLabel(state.set)}`;
+    let reason = local.search ? 'search' : inset ? (overlapActive ? 'inset · 겹침' : 'inset') : !overlapActive ? '겹치지 않음' : local.scrolled ? 'scrolled' : hoverSolid ? 'hover' : 'default';
+    status.innerHTML = solid
+      ? `<b>header-solid</b> · ${state.scheme} <span style="opacity:.6">(${reason})</span>`
+      : `<b>header-on-media</b> · on-${state.on} <span style="opacity:.6">(겹침 · default)</span>`;
+  }
+
+  hdr.addEventListener('mouseenter', () => { local.hovered = true; render(); });
+  hdr.addEventListener('mouseleave', () => { local.hovered = false; local.open = false; render(); });
+  hdr.querySelectorAll('.hdr-bar .hdr-item').forEach(item => {
+    // while search is open, hovering nav items doesn't swap in the 2depth menu
+    item.addEventListener('mouseenter', () => { if (local.search) return; local.open = item.hasAttribute('data-depth2'); render(); });
+  });
+  // leaving the bar for empty bar space (not the menu) closes 2depth
+  hdr.querySelector('.hdr-bar').addEventListener('mousemove', e => {
+    if (local.open && !e.target.closest('.hdr-item')) { local.open = false; render(); }
+  });
+
+  // search: click to open/close, click dim or Esc to close
+  function setSearch(open) {
+    local.search = open;
+    local.open = false;
+    if (open) {
+      if (!searchInput.value) searchInput.value = 'Product'; // typing state from the design
+      setTimeout(() => { searchInput.focus({ preventScroll: true }); searchInput.select(); }, 50);
+    }
+    render();
+  }
+  hdr.querySelector('[data-search]').addEventListener('click', () => setSearch(!local.search));
+  node.querySelector('.dim').addEventListener('click', () => { if (local.search) setSearch(false); });
+  searchInput.addEventListener('input', render);
+  searchInput.addEventListener('keydown', e => { if (e.key === 'Escape') setSearch(false); });
+  scroller.addEventListener('scroll', () => {
+    const s = scroller.scrollTop > 0;
+    if (s !== local.scrolled) { local.scrolled = s; render(); }
+  }, { passive: true });
+
+  return {
+    node,
+    render,
+    setPage() { page.innerHTML = pageHTML(state.page); scroller.scrollTop = 0; local.scrolled = false; render(); },
+  };
+}
+
+/* ── Stage ── */
+const stage = document.getElementById('stage');
+let panes = [];
+
+function buildStage() {
+  stage.innerHTML = '';
+  const inset = SET_INFO[state.set].inset;
+  const modes = inset ? ['solid'] : state.compare ? ['always', 'depth2'] : [state.hover];
+  stage.classList.toggle('compare', state.compare && !inset);
+  panes = modes.map(createPane);
+  panes.forEach(p => { stage.appendChild(p.node); p.setPage(); });
+}
+
+function renderAll() { panes.forEach(p => p.render()); }
+
+/* ── Editor controls ── */
+function bindSeg(id, key, onChange) {
+  const seg = document.getElementById(id);
+  const sync = () => seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === state[key])));
+  seg.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b || b.disabled) return;
+    state[key] = b.dataset.v; sync(); (onChange || renderAll)();
+  });
+  sync();
+}
+
+function syncEditor() {
+  const fullBleed = PAGES[state.page].fullBleed;
+  const inset = SET_INFO[state.set].inset;
+  document.querySelectorAll('.set').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.set === state.set)));
+  document.getElementById('setHint').textContent = SET_INFO[state.set].hint;
+  document.getElementById('hoverGroup').classList.toggle('is-hidden', inset);
+  document.getElementById('insetHint').classList.toggle('is-hidden', !inset);
+  document.getElementById('solidHint').textContent = inset
+    ? '헤더와 2depth 메뉴에 항상 적용됩니다.'
+    : '겹치지 않을 때, 호버·스크롤 시, 2depth 메뉴에 적용됩니다.';
+  document.getElementById('defaultRow').innerHTML = inset
+    ? '<code>header-solid</code> 고정 (겹침 여부 무관)'
+    : '겹침 시 <code>header-on-media</code> (on-dark / on-light), 아니면 <code>header-solid</code>';
+  document.getElementById('onGroup').classList.toggle('is-hidden', !state.overlap || inset);
+
+  document.getElementById('noBleedHint').classList.toggle('is-hidden', !state.overlap || fullBleed);
+  document.querySelectorAll('input[name="hover"]').forEach(r => {
+    r.checked = r.value === state.hover;
+    r.disabled = state.compare;
+  });
+}
+
+const thumbInner = n => `<i></i><i></i>${n === '04' ? '' : '<b></b>'}<i class="r"></i>`;
+document.getElementById('sets').innerHTML = SETS.map(n => {
+  const inset = ['08', '09'].includes(n);
+  return `
+  <button type="button" class="set" data-set="${n}" aria-pressed="false" ${ENABLED_SETS.includes(n) ? '' : 'disabled title="이 프로토타입은 set 05 / 06, 08만 지원"'}>
+    <div class="set-thumb ${inset ? 'inset' : ''}">
+      ${inset ? `<div>${thumbInner(n)}</div>` : thumbInner(n)}
+    </div>
+    <span>set ${setLabel(n)}</span>
+  </button>`;
+}).join('');
+document.getElementById('sets').addEventListener('click', e => {
+  const b = e.target.closest('.set');
+  if (!b || b.disabled || b.dataset.set === state.set) return;
+  state.set = b.dataset.set;
+  syncEditor();
+  buildStage();
+});
+
+bindSeg('onSeg', 'on');
+bindSeg('schemeSeg', 'scheme');
+
+document.getElementById('overlap').addEventListener('change', e => { state.overlap = e.target.checked; syncEditor(); renderAll(); });
+document.querySelectorAll('input[name="hover"]').forEach(r =>
+  r.addEventListener('change', () => { state.hover = r.value; buildStage(); }));
+document.getElementById('compare').addEventListener('change', e => { state.compare = e.target.checked; syncEditor(); buildStage(); });
+document.getElementById('page').addEventListener('change', e => {
+  state.page = e.target.value;
+  // match the overlap colour to the hero tone as a sensible default
+  if (state.page === 'home-light') state.on = 'light';
+  if (state.page === 'home-dark') state.on = 'dark';
+  document.querySelectorAll('#onSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === state.on)));
+  syncEditor();
+  panes.forEach(p => p.setPage());
+});
+
+syncEditor();
+buildStage();
+</script>
+</body>
+</html>

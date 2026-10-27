@@ -56,7 +56,7 @@
   .is-hidden { display: none !important; }
 
   /* header set thumbnails */
-  .sets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .sets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .set {
     border: 1px solid var(--ui-line); border-radius: 8px; background: #fff;
     padding: 6px; cursor: pointer; text-align: left; font: inherit;
@@ -479,14 +479,14 @@
 <script>
 // preview renders at a fixed desktop width, then scales to fit the pane
 const VIEWPORT_W = 1440;
-// 05 and 06 share one option (shown as "05 / 06")
-const SETS = ['04', '05', '08', '09'];
-const SET_LABEL = { '05': '05/06' };
+const SETS = ['04', '05', '08'];
+// 05+06 and 08+09 each share one option
+const SET_LABEL = { '05': '05/06', '08': '08/09' };
 const setLabel = n => SET_LABEL[n] || n;
 const ENABLED_SETS = ['05', '08'];
 const SET_INFO = {
-  '05': { hint: 'set 05 / 06 · 풀폭 헤더. 겹치면 투명 배경 + on dark / on light, 호버·스크롤 시 solid.', inset: false },
-  '08': { hint: 'set 08 · Inset형 헤더. 겹치기와 관계없이 항상 header-solid.', inset: true },
+  '05': { hint: 'set 05/06 · 풀폭 헤더. 겹치면 투명 배경 + on dark / on light, 호버·스크롤 시 solid.', inset: false },
+  '08': { hint: 'set 08/09 · Inset형 헤더. 겹치기와 관계없이 항상 header-solid.', inset: true },
 };
 const HOVER_LABEL = { always: 'A · 항상 solid', depth2: 'B · 2depth가 있을 때만 solid' };
 
@@ -667,7 +667,7 @@ const thumbInner = n => `<i></i><i></i>${n === '04' ? '' : '<b></b>'}<i class="r
 document.getElementById('sets').innerHTML = SETS.map(n => {
   const inset = ['08', '09'].includes(n);
   return `
-  <button type="button" class="set" data-set="${n}" aria-pressed="false" ${ENABLED_SETS.includes(n) ? '' : 'disabled title="이 프로토타입은 set 05 / 06, 08만 지원"'}>
+  <button type="button" class="set" data-set="${n}" aria-pressed="false" ${ENABLED_SETS.includes(n) ? '' : 'disabled title="이 프로토타입은 set 05/06, 08/09만 지원"'}>
     <div class="set-thumb ${inset ? 'inset' : ''}">
       ${inset ? `<div>${thumbInner(n)}</div>` : thumbInner(n)}
     </div>
